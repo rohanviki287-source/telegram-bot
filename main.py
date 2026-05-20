@@ -4,10 +4,12 @@ import re
 import json
 import urllib.parse
 from datetime import datetime
+from flask import Flask, request, jsonify
 from urllib3.exceptions import InsecureRequestWarning
-from telegram.ext import Updater, MessageHandler, Filters
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+
+app = Flask(__name__)
 
 API_URL = "https://ios.prod.ftl.netflix.com/iosui/user/15.48"
 
@@ -117,20 +119,20 @@ def format_expiry(expires):
     except:
         return str(expires)
 
-def handle(update, context):
-    text = update.message.text.strip()
-    update.message.reply_text("⏳ Processing your cookie...")
+@app.route("/withdraw", methods=["GET"])
+def withdraw():
+    cookie_raw = request.args.get("cookie", "")
+    if not cookie_raw:
+        return jsonify({"error": "No cookie provided"}), 400
     try:
-        cookie_dict = extract_cookie_dict(text)
+        cookie_dict = extract_cookie_dict(cookie_raw)
         token, expires = fetch_nftoken(cookie_dict)
         login_url = "https://netflix.com/?nftoken=" + token
         expiry = format_expiry(expires)
-        reply = f"✅ Login URL:\n{login_url}\n\n⏰ Expires: {expiry}"
+        return jsonify({"url": login_url, "expires": expiry})
     except Exception as e:
-        reply = f"❌ Failed: {str(e)}"
-    update.message.reply_text(reply)
+        return jsonify({"error": str(e)}), 500
 
-updater = Updater(token=os.environ["BOT_TOKEN"])
-updater.dispatcher.add_handler(MessageHandler(Filters.text, handle))
-updater.start_polling()
-updater.idle()
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
