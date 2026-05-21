@@ -129,7 +129,7 @@ def withdraw():
         token, expires = fetch_nftoken(cookie_dict)
         login_url = "https://netflix.com/?nftoken=" + token
         expiry = format_expiry(expires)
-        return jsonify({"url": login_url, "expires": expiry})
+        return jsonify({"url": login_url, "expires": expiry, "token": token})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
